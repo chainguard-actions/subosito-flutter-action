@@ -1,0 +1,7 @@
+{
+  "owner": "subosito",
+  "name": "flutter-action",
+  "visibility": "internal",
+  "description": "Setup your runner with Flutter environment",
+  "block_publish": false
+}
