@@ -9,6 +9,7 @@ Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at
 | Version | Tag | Upstream commit |
 |---------|-----|-----------------|
 | v2.19.0 | [`v2.19.0`](https://github.com/chainguard-actions/flutter-action/tree/v2.19.0) | — |
+| v2.22.0 | [`v2.22.0`](https://github.com/chainguard-actions/flutter-action/tree/v2.22.0) | — |
 | v2.23.0 | [`v2.23.0`](https://github.com/chainguard-actions/flutter-action/tree/v2.23.0) | — |
 
 ## Privacy
