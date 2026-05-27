@@ -14,30 +14,29 @@ Action **subosito--flutter-action/v2.23.0** was hardened automatically. 12 findi
 
 ### script-injection (severity: high)
 
-The 'Set action inputs' step in action.yaml directly interpolates multiple `inputs.*` expressions inside the `run:` shell command string without first assigning them to environment variables. For example: `${{ inputs.flutter-version }}`, `${{ inputs.flutter-version-file }}`, `${{ inputs.architecture }}`, `${{ inputs.cache-key }}`, `${{ inputs.cache-path }}`, `${{ inputs.pub-cache-key }}`, `${{ inputs.pub-cache-path }}`, `${{ inputs.git-source }}`, and `${{ inputs.channel }}` are all interpolated directly as shell arguments. An attacker-controlled input value containing shell metacharacters (e.g. single-quote breaking out of the quoted argument, or unquoted `${{ inputs.channel }}`) can execute arbitrary shell commands. These values must be passed via `env:` and referenced as `$ENV_VAR` in the run block.
+The 'Set action inputs' run block in action.yaml directly interpolates attacker-controlled inputs expressions into the shell command without first assigning them to environment variables. Most critically, `${{ inputs.channel }}` is interpolated completely unquoted (no surrounding quotes at all), allowing arbitrary shell command injection. The other inputs (flutter-version, flutter-version-file, architecture, cache-key, cache-path, pub-cache-key, pub-cache-path, git-source) are single-quoted but still directly interpolated — a value containing a single quote can break out of the quoting and inject shell commands. All inputs.* values must be assigned to env vars and referenced as $ENV_VAR in the run block.
 
 Locations:
 
-- `action.yaml:113`
+- `action.yaml:100`
 
 ### github-env-injection (severity: high)
 
-setup.sh writes values derived from attacker-controlled inputs (passed as shell arguments from `inputs.*` in action.yaml) to $GITHUB_OUTPUT, $GITHUB_ENV, and $GITHUB_PATH without the required sanitization step (`printf '%s' ... | tr -d '\n\r'`). Specifically: (1) CHANNEL, VERSION, ARCHITECTURE, CACHE-KEY, CACHE-PATH, PUB-CACHE-KEY, and PUB-CACHE-PATH are written to $GITHUB_OUTPUT (line ~185 in setup.sh); (2) FLUTTER_ROOT and PUB_CACHE are written to $GITHUB_ENV; (3) flutter/bin paths are written to $GITHUB_PATH. A newline injected into any of these values (e.g. via `inputs.channel` or `inputs.git-source`) can inject arbitrary environment variables or PATH entries.
+The 'Set action inputs' run block passes attacker-controlled `inputs.*` values (including the completely unquoted `${{ inputs.channel }}`) as arguments to setup.sh, which then writes derived values to $GITHUB_OUTPUT, $GITHUB_ENV, and $GITHUB_PATH without the required sanitization step (`printf '%s' ... | tr -d '\n\r'`). An attacker can inject newlines into inputs (especially the unquoted `inputs.channel`) to write arbitrary key=value pairs into the special environment files. In setup.sh, the writes to $GITHUB_OUTPUT (lines ~200-210), $GITHUB_ENV (lines ~240-243), and $GITHUB_PATH (lines ~245-249) all lack sanitization of the values derived from user-controlled inputs.
 
 Locations:
 
-- `setup.sh:185`
+- `action.yaml:100`
 - `setup.sh:200`
-- `setup.sh:205`
 
 ### unpinned-uses (severity: high)
 
-action.yaml references `actions/cache@v5` twice using a mutable version tag instead of a pinned 40-character commit SHA. This is vulnerable to supply-chain attacks if the tag is moved to point to a different (potentially malicious) commit. Both the 'Cache Flutter' and 'Cache pub dependencies' steps are affected. These should be pinned to a full SHA, e.g. `actions/cache@1bd1e32a3bdc45362d1e726936510720a7c6158d # v4`.
+Two `uses:` references in action.yaml pin to the mutable tag `@v5` instead of a full 40-character commit SHA. This means the action could silently change if the tag is moved, enabling supply-chain attacks. Failing references: `actions/cache@v5` (Cache Flutter step) and `actions/cache@v5` (Cache pub dependencies step). These should be pinned to a full SHA, e.g. `actions/cache@1bd1e32a3bdc45362d1e726936510720a7c6158d # v5`.
 
 Locations:
 
+- `action.yaml:112`
 - `action.yaml:120`
-- `action.yaml:126`
 
 ### static-inline-injection (severity: high)
 
@@ -119,5 +118,8 @@ Locations:
 
 **Notes:**
 
-Fixed all findings in action.yaml and setup.sh: (1) Moved all ${{ inputs.* }} expressions in the 'Set action inputs' step to an env: block and referenced them as $ENV_VAR in the run: block to prevent shell injection. (2) Sanitized all values written to $GITHUB_OUTPUT, $GITHUB_ENV, and $GITHUB_PATH in setup.sh using `printf '%s' "$var" | tr -d '\n\r'` to prevent newline injection. (3) Pinned both actions/cache@v5 references to the full SHA actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.
+Fixed all findings in action.yaml and setup.sh:
+1. script-injection/static-inline-injection: Moved all ${{ inputs.* }} expressions in the 'Set action inputs' step to an env: block (INPUT_FLUTTER_VERSION, INPUT_FLUTTER_VERSION_FILE, INPUT_ARCHITECTURE, INPUT_CACHE_KEY, INPUT_CACHE_PATH, INPUT_PUB_CACHE_KEY, INPUT_PUB_CACHE_PATH, INPUT_GIT_SOURCE, INPUT_CHANNEL) and referenced them as $ENV_VAR with double-quoting in the shell script.
+2. github-env-injection: In setup.sh, sanitized all user-controlled values written to $GITHUB_OUTPUT (lines ~200-210), $GITHUB_ENV (~240-243), and $GITHUB_PATH (~245-249) using `printf '%s' "$VAR" | tr -d '\n\r'` before writing.
+3. unpinned-uses: Pinned both `actions/cache@v5` references to full SHA `actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5`.
 

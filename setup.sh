@@ -209,14 +209,21 @@ if [ "$PRINT_ONLY" = true ]; then
 	fi
 
 	{
-		printf 'CHANNEL=%s\n' "$(printf '%s' "$info_channel" | tr -d '\n\r')"
-		printf 'VERSION=%s\n' "$(printf '%s' "$info_version" | tr -d '\n\r')"
+		safe_channel=$(printf '%s' "$info_channel" | tr -d '\n\r')
+		safe_version=$(printf '%s' "$info_version" | tr -d '\n\r')
+		safe_architecture=$(printf '%s' "$info_architecture" | tr -d '\n\r')
+		safe_cache_key=$(printf '%s' "$CACHE_KEY" | tr -d '\n\r')
+		safe_cache_path=$(printf '%s' "$CACHE_PATH" | tr -d '\n\r')
+		safe_pub_cache_key=$(printf '%s' "$PUB_CACHE_KEY" | tr -d '\n\r')
+		safe_pub_cache=$(printf '%s' "$PUB_CACHE" | tr -d '\n\r')
+		echo "CHANNEL=$safe_channel"
+		echo "VERSION=$safe_version"
 		# VERSION_FILE is not printed, because it is essentially same as VERSION
-		printf 'ARCHITECTURE=%s\n' "$(printf '%s' "$info_architecture" | tr -d '\n\r')"
-		printf 'CACHE-KEY=%s\n' "$(printf '%s' "$CACHE_KEY" | tr -d '\n\r')"
-		printf 'CACHE-PATH=%s\n' "$(printf '%s' "$CACHE_PATH" | tr -d '\n\r')"
-		printf 'PUB-CACHE-KEY=%s\n' "$(printf '%s' "$PUB_CACHE_KEY" | tr -d '\n\r')"
-		printf 'PUB-CACHE-PATH=%s\n' "$(printf '%s' "$PUB_CACHE" | tr -d '\n\r')"
+		echo "ARCHITECTURE=$safe_architecture"
+		echo "CACHE-KEY=$safe_cache_key"
+		echo "CACHE-PATH=$safe_cache_path"
+		echo "PUB-CACHE-KEY=$safe_pub_cache_key"
+		echo "PUB-CACHE-PATH=$safe_pub_cache"
 	} >>"${GITHUB_OUTPUT:-/dev/null}"
 
 	exit 0
@@ -236,16 +243,16 @@ if [ ! -x "$CACHE_PATH/flutter/bin/flutter" ]; then
 fi
 
 {
-	safe_cache_path="$(printf '%s' "$CACHE_PATH" | tr -d '\n\r')"
-	safe_pub_cache="$(printf '%s' "$PUB_CACHE" | tr -d '\n\r')"
-	printf 'FLUTTER_ROOT=%s\n' "${safe_cache_path}/flutter"
-	printf 'PUB_CACHE=%s\n' "${safe_pub_cache}"
+	safe_cache_path_env=$(printf '%s' "$CACHE_PATH" | tr -d '\n\r')
+	safe_pub_cache_env=$(printf '%s' "$PUB_CACHE" | tr -d '\n\r')
+	echo "FLUTTER_ROOT=$safe_cache_path_env/flutter"
+	echo "PUB_CACHE=$safe_pub_cache_env"
 } >>"${GITHUB_ENV:-/dev/null}"
 
 {
-	safe_cache_path="$(printf '%s' "$CACHE_PATH" | tr -d '\n\r')"
-	safe_pub_cache="$(printf '%s' "$PUB_CACHE" | tr -d '\n\r')"
-	printf '%s\n' "${safe_cache_path}/flutter/bin"
-	printf '%s\n' "${safe_cache_path}/flutter/bin/cache/dart-sdk/bin"
-	printf '%s\n' "${safe_pub_cache}/bin"
+	safe_cache_path_path=$(printf '%s' "$CACHE_PATH" | tr -d '\n\r')
+	safe_pub_cache_path=$(printf '%s' "$PUB_CACHE" | tr -d '\n\r')
+	echo "$safe_cache_path_path/flutter/bin"
+	echo "$safe_cache_path_path/flutter/bin/cache/dart-sdk/bin"
+	echo "$safe_pub_cache_path/bin"
 } >>"${GITHUB_PATH:-/dev/null}"
