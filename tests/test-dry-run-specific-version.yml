@@ -1,0 +1,69 @@
+name: Test dry-run with specific Flutter version
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install mock curl to serve local Flutter manifest
+        run: |
+          cp "$GITHUB_WORKSPACE/tests/fixtures/mock-curl.sh" /usr/local/bin/curl
+          chmod +x /usr/local/bin/curl
+
+      - id: action
+        uses: .
+        with:
+          channel: stable
+          flutter-version: "3.x"
+          dry-run: "true"
+
+      - name: Assert CHANNEL output is stable
+        env:
+          CHANNEL: ${{ steps.action.outputs.CHANNEL }}
+        run: |
+          echo "CHANNEL: $CHANNEL"
+          if [ "$CHANNEL" != "stable" ]; then
+            echo "FAIL: expected CHANNEL=stable, got '$CHANNEL'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert VERSION output starts with 3
+        env:
+          VERSION: ${{ steps.action.outputs.VERSION }}
+        run: |
+          echo "VERSION: $VERSION"
+          if [ -z "$VERSION" ]; then
+            echo "FAIL: expected non-empty VERSION"
+            exit 1
+          fi
+          if echo "$VERSION" | grep -qE '^3\.'; then
+            echo "PASS: VERSION starts with 3."
+          else
+            echo "FAIL: expected VERSION to start with '3.', got '$VERSION'"
+            exit 1
+          fi
+
+      - name: Assert CACHE-KEY contains version info
+        env:
+          CACHE_KEY: ${{ steps.action.outputs.CACHE-KEY }}
+        run: |
+          echo "CACHE-KEY: $CACHE_KEY"
+          if [ -z "$CACHE_KEY" ]; then
+            echo "FAIL: expected non-empty CACHE-KEY"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert ARCHITECTURE output is x64
+        env:
+          ARCH: ${{ steps.action.outputs.ARCHITECTURE }}
+        run: |
+          echo "ARCHITECTURE: $ARCH"
+          if [ "$ARCH" != "x64" ]; then
+            echo "FAIL: expected ARCHITECTURE=x64 on ubuntu runner, got '$ARCH'"
+            exit 1
+          fi
+          echo "PASS"

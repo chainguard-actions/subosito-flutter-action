@@ -1,0 +1,77 @@
+name: Test dry-run with custom cache key and path
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install mock curl to serve local Flutter manifest
+        run: |
+          cp "$GITHUB_WORKSPACE/tests/fixtures/mock-curl.sh" /usr/local/bin/curl
+          chmod +x /usr/local/bin/curl
+
+      - id: action
+        uses: .
+        with:
+          channel: stable
+          dry-run: "true"
+          cache-key: "my-custom-flutter-:channel:-:version:-:arch:"
+          cache-path: "/tmp/flutter-sdk"
+          pub-cache-key: "my-pub-:channel:-:version:"
+          pub-cache-path: "/tmp/pub-cache"
+
+      - name: Assert CACHE-KEY contains custom prefix
+        env:
+          CACHE_KEY: ${{ steps.action.outputs.CACHE-KEY }}
+        run: |
+          echo "CACHE-KEY: $CACHE_KEY"
+          if [ -z "$CACHE_KEY" ]; then
+            echo "FAIL: expected non-empty CACHE-KEY"
+            exit 1
+          fi
+          if echo "$CACHE_KEY" | grep -q "my-custom-flutter-"; then
+            echo "PASS: CACHE-KEY contains custom prefix"
+          else
+            echo "FAIL: expected CACHE-KEY to contain 'my-custom-flutter-', got '$CACHE_KEY'"
+            exit 1
+          fi
+
+      - name: Assert CACHE-PATH is custom path
+        env:
+          CACHE_PATH: ${{ steps.action.outputs.CACHE-PATH }}
+        run: |
+          echo "CACHE-PATH: $CACHE_PATH"
+          if [ "$CACHE_PATH" != "/tmp/flutter-sdk" ]; then
+            echo "FAIL: expected CACHE-PATH=/tmp/flutter-sdk, got '$CACHE_PATH'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert PUB-CACHE-KEY contains custom prefix
+        env:
+          PUB_CACHE_KEY: ${{ steps.action.outputs.PUB-CACHE-KEY }}
+        run: |
+          echo "PUB-CACHE-KEY: $PUB_CACHE_KEY"
+          if [ -z "$PUB_CACHE_KEY" ]; then
+            echo "FAIL: expected non-empty PUB-CACHE-KEY"
+            exit 1
+          fi
+          if echo "$PUB_CACHE_KEY" | grep -q "my-pub-"; then
+            echo "PASS: PUB-CACHE-KEY contains custom prefix"
+          else
+            echo "FAIL: expected PUB-CACHE-KEY to contain 'my-pub-', got '$PUB_CACHE_KEY'"
+            exit 1
+          fi
+
+      - name: Assert PUB-CACHE-PATH is custom path
+        env:
+          PUB_CACHE_PATH: ${{ steps.action.outputs.PUB-CACHE-PATH }}
+        run: |
+          echo "PUB-CACHE-PATH: $PUB_CACHE_PATH"
+          if [ "$PUB_CACHE_PATH" != "/tmp/pub-cache" ]; then
+            echo "FAIL: expected PUB-CACHE-PATH=/tmp/pub-cache, got '$PUB_CACHE_PATH'"
+            exit 1
+          fi
+          echo "PASS"

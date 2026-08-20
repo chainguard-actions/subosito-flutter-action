@@ -1,0 +1,56 @@
+name: Test dry-run with .fvmrc version file
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install mock curl to serve local Flutter manifest
+        run: |
+          cp "$GITHUB_WORKSPACE/tests/fixtures/mock-curl.sh" /usr/local/bin/curl
+          chmod +x /usr/local/bin/curl
+
+      - name: Create .fvmrc file
+        run: |
+          printf '{\n  "flutter": "stable"\n}\n' > "$GITHUB_WORKSPACE/.fvmrc"
+
+      - id: action
+        uses: .
+        with:
+          flutter-version-file: .fvmrc
+          dry-run: "true"
+
+      - name: Assert CHANNEL output is stable (from fvmrc)
+        env:
+          CHANNEL: ${{ steps.action.outputs.CHANNEL }}
+        run: |
+          echo "CHANNEL: $CHANNEL"
+          if [ "$CHANNEL" != "stable" ]; then
+            echo "FAIL: expected CHANNEL=stable from .fvmrc, got '$CHANNEL'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert VERSION output is non-empty
+        env:
+          VERSION: ${{ steps.action.outputs.VERSION }}
+        run: |
+          echo "VERSION: $VERSION"
+          if [ -z "$VERSION" ]; then
+            echo "FAIL: expected non-empty VERSION"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert CACHE-KEY is non-empty
+        env:
+          CACHE_KEY: ${{ steps.action.outputs.CACHE-KEY }}
+        run: |
+          echo "CACHE-KEY: $CACHE_KEY"
+          if [ -z "$CACHE_KEY" ]; then
+            echo "FAIL: expected non-empty CACHE-KEY"
+            exit 1
+          fi
+          echo "PASS"

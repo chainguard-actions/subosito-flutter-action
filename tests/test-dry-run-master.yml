@@ -1,0 +1,68 @@
+name: Test dry-run master channel
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install mock curl to serve local Flutter manifest
+        run: |
+          cp "$GITHUB_WORKSPACE/tests/fixtures/mock-curl.sh" /usr/local/bin/curl
+          chmod +x /usr/local/bin/curl
+
+      - id: action
+        uses: .
+        with:
+          channel: master
+          dry-run: "true"
+
+      - name: Assert CHANNEL output is master
+        env:
+          CHANNEL: ${{ steps.action.outputs.CHANNEL }}
+        run: |
+          echo "CHANNEL: $CHANNEL"
+          if [ "$CHANNEL" != "master" ]; then
+            echo "FAIL: expected CHANNEL=master, got '$CHANNEL'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert VERSION output is non-empty
+        env:
+          VERSION: ${{ steps.action.outputs.VERSION }}
+        run: |
+          echo "VERSION: $VERSION"
+          if [ -z "$VERSION" ]; then
+            echo "FAIL: expected non-empty VERSION"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert CACHE-KEY contains master
+        env:
+          CACHE_KEY: ${{ steps.action.outputs.CACHE-KEY }}
+        run: |
+          echo "CACHE-KEY: $CACHE_KEY"
+          if [ -z "$CACHE_KEY" ]; then
+            echo "FAIL: expected non-empty CACHE-KEY"
+            exit 1
+          fi
+          if echo "$CACHE_KEY" | grep -q "master"; then
+            echo "PASS: CACHE-KEY contains 'master'"
+          else
+            echo "FAIL: expected CACHE-KEY to contain 'master', got '$CACHE_KEY'"
+            exit 1
+          fi
+
+      - name: Assert ARCHITECTURE output is non-empty
+        env:
+          ARCH: ${{ steps.action.outputs.ARCHITECTURE }}
+        run: |
+          echo "ARCHITECTURE: $ARCH"
+          if [ -z "$ARCH" ]; then
+            echo "FAIL: expected non-empty ARCHITECTURE"
+            exit 1
+          fi
+          echo "PASS"
