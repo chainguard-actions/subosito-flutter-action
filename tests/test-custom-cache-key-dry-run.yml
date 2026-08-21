@@ -1,0 +1,90 @@
+name: Test custom cache-key and cache-path dry-run
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install fake curl to intercept Flutter manifest
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          cp "$GITHUB_WORKSPACE/tests/fixtures/fake-curl.sh" "$HOME/.local/bin/curl"
+          chmod +x "$HOME/.local/bin/curl"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - id: action
+        uses: .
+        with:
+          channel: stable
+          cache-key: "my-flutter-:channel:-:version:-:arch:"
+          cache-path: "/tmp/flutter-sdk/:channel:-:version:"
+          dry-run: "true"
+
+      - name: Assert CACHE-KEY is expanded (no placeholders remain)
+        env:
+          CACHE_KEY: ${{ steps.action.outputs.CACHE-KEY }}
+        run: |
+          echo "CACHE-KEY: $CACHE_KEY"
+          if [ -z "$CACHE_KEY" ]; then
+            echo "FAIL: expected CACHE-KEY to be non-empty"
+            exit 1
+          fi
+          # Verify placeholders were expanded
+          if echo "$CACHE_KEY" | grep -q ":channel:"; then
+            echo "FAIL: CACHE-KEY still contains ':channel:' placeholder"
+            exit 1
+          fi
+          if echo "$CACHE_KEY" | grep -q ":version:"; then
+            echo "FAIL: CACHE-KEY still contains ':version:' placeholder"
+            exit 1
+          fi
+          if echo "$CACHE_KEY" | grep -q ":arch:"; then
+            echo "FAIL: CACHE-KEY still contains ':arch:' placeholder"
+            exit 1
+          fi
+          # Verify it starts with our custom prefix
+          if echo "$CACHE_KEY" | grep -q "^my-flutter-"; then
+            echo "PASS: CACHE-KEY has custom prefix and placeholders expanded"
+          else
+            echo "FAIL: CACHE-KEY does not start with 'my-flutter-', got '$CACHE_KEY'"
+            exit 1
+          fi
+
+      - name: Assert CACHE-PATH is expanded (no placeholders remain)
+        env:
+          CACHE_PATH: ${{ steps.action.outputs.CACHE-PATH }}
+        run: |
+          echo "CACHE-PATH: $CACHE_PATH"
+          if [ -z "$CACHE_PATH" ]; then
+            echo "FAIL: expected CACHE-PATH to be non-empty"
+            exit 1
+          fi
+          # Verify placeholders were expanded
+          if echo "$CACHE_PATH" | grep -q ":channel:"; then
+            echo "FAIL: CACHE-PATH still contains ':channel:' placeholder"
+            exit 1
+          fi
+          if echo "$CACHE_PATH" | grep -q ":version:"; then
+            echo "FAIL: CACHE-PATH still contains ':version:' placeholder"
+            exit 1
+          fi
+          # Verify it starts with our custom prefix
+          if echo "$CACHE_PATH" | grep -q "^/tmp/flutter-sdk/"; then
+            echo "PASS: CACHE-PATH has custom prefix and placeholders expanded"
+          else
+            echo "FAIL: CACHE-PATH does not start with '/tmp/flutter-sdk/', got '$CACHE_PATH'"
+            exit 1
+          fi
+
+      - name: Assert CHANNEL output is stable
+        env:
+          CHANNEL: ${{ steps.action.outputs.CHANNEL }}
+        run: |
+          echo "CHANNEL: $CHANNEL"
+          if [ "$CHANNEL" != "stable" ]; then
+            echo "FAIL: expected CHANNEL='stable', got '$CHANNEL'"
+            exit 1
+          fi
+          echo "PASS"

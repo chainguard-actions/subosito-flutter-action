@@ -1,0 +1,106 @@
+name: Test basic dry-run (stable channel)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install fake curl to intercept Flutter manifest
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          cp "$GITHUB_WORKSPACE/tests/fixtures/fake-curl.sh" "$HOME/.local/bin/curl"
+          chmod +x "$HOME/.local/bin/curl"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - id: action
+        uses: .
+        with:
+          channel: stable
+          dry-run: "true"
+
+      - name: Assert CHANNEL output is stable
+        env:
+          CHANNEL: ${{ steps.action.outputs.CHANNEL }}
+        run: |
+          echo "CHANNEL: $CHANNEL"
+          if [ "$CHANNEL" != "stable" ]; then
+            echo "FAIL: expected CHANNEL='stable', got '$CHANNEL'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert VERSION output is non-empty
+        env:
+          VERSION: ${{ steps.action.outputs.VERSION }}
+        run: |
+          echo "VERSION: $VERSION"
+          if [ -z "$VERSION" ]; then
+            echo "FAIL: expected VERSION to be non-empty"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert ARCHITECTURE output is non-empty
+        env:
+          ARCH: ${{ steps.action.outputs.ARCHITECTURE }}
+        run: |
+          echo "ARCHITECTURE: $ARCH"
+          if [ -z "$ARCH" ]; then
+            echo "FAIL: expected ARCHITECTURE to be non-empty"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert CACHE-KEY output is non-empty
+        env:
+          CACHE_KEY: ${{ steps.action.outputs.CACHE-KEY }}
+        run: |
+          echo "CACHE-KEY: $CACHE_KEY"
+          if [ -z "$CACHE_KEY" ]; then
+            echo "FAIL: expected CACHE-KEY to be non-empty"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert CACHE-PATH output is non-empty
+        env:
+          CACHE_PATH: ${{ steps.action.outputs.CACHE-PATH }}
+        run: |
+          echo "CACHE-PATH: $CACHE_PATH"
+          if [ -z "$CACHE_PATH" ]; then
+            echo "FAIL: expected CACHE-PATH to be non-empty"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert PUB-CACHE-KEY output is non-empty
+        env:
+          PUB_CACHE_KEY: ${{ steps.action.outputs.PUB-CACHE-KEY }}
+        run: |
+          echo "PUB-CACHE-KEY: $PUB_CACHE_KEY"
+          if [ -z "$PUB_CACHE_KEY" ]; then
+            echo "FAIL: expected PUB-CACHE-KEY to be non-empty"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert PUB-CACHE-PATH output is non-empty
+        env:
+          PUB_CACHE_PATH: ${{ steps.action.outputs.PUB-CACHE-PATH }}
+        run: |
+          echo "PUB-CACHE-PATH: $PUB_CACHE_PATH"
+          if [ -z "$PUB_CACHE_PATH" ]; then
+            echo "FAIL: expected PUB-CACHE-PATH to be non-empty"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert GIT_SOURCE output (informational)
+        env:
+          GIT_SOURCE: ${{ steps.action.outputs.GIT_SOURCE }}
+        run: |
+          echo "GIT_SOURCE: $GIT_SOURCE"
+          # GIT_SOURCE may or may not be set depending on setup.sh version
+          echo "PASS: GIT_SOURCE check complete"

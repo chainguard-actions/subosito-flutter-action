@@ -1,0 +1,76 @@
+name: Test architecture input dry-run
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install fake curl to intercept Flutter manifest
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          cp "$GITHUB_WORKSPACE/tests/fixtures/fake-curl.sh" "$HOME/.local/bin/curl"
+          chmod +x "$HOME/.local/bin/curl"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - id: action
+        uses: .
+        with:
+          channel: stable
+          architecture: x64
+          dry-run: "true"
+
+      - name: Assert ARCHITECTURE output is x64
+        env:
+          ARCH: ${{ steps.action.outputs.ARCHITECTURE }}
+        run: |
+          echo "ARCHITECTURE: $ARCH"
+          if [ "$ARCH" != "x64" ]; then
+            echo "FAIL: expected ARCHITECTURE='x64', got '$ARCH'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert CACHE-KEY contains x64
+        env:
+          CACHE_KEY: ${{ steps.action.outputs.CACHE-KEY }}
+        run: |
+          echo "CACHE-KEY: $CACHE_KEY"
+          if [ -z "$CACHE_KEY" ]; then
+            echo "FAIL: expected CACHE-KEY to be non-empty"
+            exit 1
+          fi
+          if echo "$CACHE_KEY" | grep -q "x64"; then
+            echo "PASS: CACHE-KEY contains 'x64'"
+          else
+            echo "FAIL: expected CACHE-KEY to contain 'x64', got '$CACHE_KEY'"
+            exit 1
+          fi
+
+      - name: Assert CACHE-PATH contains x64
+        env:
+          CACHE_PATH: ${{ steps.action.outputs.CACHE-PATH }}
+        run: |
+          echo "CACHE-PATH: $CACHE_PATH"
+          if [ -z "$CACHE_PATH" ]; then
+            echo "FAIL: expected CACHE-PATH to be non-empty"
+            exit 1
+          fi
+          if echo "$CACHE_PATH" | grep -q "x64"; then
+            echo "PASS: CACHE-PATH contains 'x64'"
+          else
+            echo "FAIL: expected CACHE-PATH to contain 'x64', got '$CACHE_PATH'"
+            exit 1
+          fi
+
+      - name: Assert CHANNEL output is stable
+        env:
+          CHANNEL: ${{ steps.action.outputs.CHANNEL }}
+        run: |
+          echo "CHANNEL: $CHANNEL"
+          if [ "$CHANNEL" != "stable" ]; then
+            echo "FAIL: expected CHANNEL='stable', got '$CHANNEL'"
+            exit 1
+          fi
+          echo "PASS"
