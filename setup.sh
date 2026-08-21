@@ -201,15 +201,14 @@ if [ "$PRINT_ONLY" = true ]; then
 		exit 0
 	fi
 
-	safe_channel=$(printf '%s' "$info_channel" | tr -d '\n\r')
-	safe_version=$(printf '%s' "$info_version" | tr -d '\n\r')
-	safe_architecture=$(printf '%s' "$info_architecture" | tr -d '\n\r')
-	safe_cache_key=$(printf '%s' "$CACHE_KEY" | tr -d '\n\r')
-	safe_cache_path=$(printf '%s' "$CACHE_PATH" | tr -d '\n\r')
-	safe_pub_cache_key=$(printf '%s' "$PUB_CACHE_KEY" | tr -d '\n\r')
-	safe_pub_cache=$(printf '%s' "$PUB_CACHE" | tr -d '\n\r')
-
 	{
+		safe_channel=$(printf '%s' "$info_channel" | tr -d '\n\r')
+		safe_version=$(printf '%s' "$info_version" | tr -d '\n\r')
+		safe_architecture=$(printf '%s' "$info_architecture" | tr -d '\n\r')
+		safe_cache_key=$(printf '%s' "$CACHE_KEY" | tr -d '\n\r')
+		safe_cache_path=$(printf '%s' "$CACHE_PATH" | tr -d '\n\r')
+		safe_pub_cache_key=$(printf '%s' "$PUB_CACHE_KEY" | tr -d '\n\r')
+		safe_pub_cache=$(printf '%s' "$PUB_CACHE" | tr -d '\n\r')
 		echo "CHANNEL=$safe_channel"
 		echo "VERSION=$safe_version"
 		# VERSION_FILE is not printed, because it is essentially same as VERSION
@@ -236,16 +235,16 @@ if [ ! -x "$CACHE_PATH/bin/flutter" ]; then
 	fi
 fi
 
-safe_cache_path=$(printf '%s' "$CACHE_PATH" | tr -d '\n\r')
-safe_pub_cache=$(printf '%s' "$PUB_CACHE" | tr -d '\n\r')
+safe_cache_path_env=$(printf '%s' "$CACHE_PATH" | tr -d '\n\r')
+safe_pub_cache_env=$(printf '%s' "$PUB_CACHE" | tr -d '\n\r')
 
 {
-	echo "FLUTTER_ROOT=$safe_cache_path"
-	echo "PUB_CACHE=$safe_pub_cache"
+	echo "FLUTTER_ROOT=$safe_cache_path_env"
+	echo "PUB_CACHE=$safe_pub_cache_env"
 } >>"${GITHUB_ENV:-/dev/null}"
 
 {
-	echo "$safe_cache_path/bin"
-	echo "$safe_cache_path/bin/cache/dart-sdk/bin"
-	echo "$safe_pub_cache/bin"
+	echo "$safe_cache_path_env/bin"
+	echo "$safe_cache_path_env/bin/cache/dart-sdk/bin"
+	echo "$safe_pub_cache_env/bin"
 } >>"${GITHUB_PATH:-/dev/null}"

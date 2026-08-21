@@ -1,0 +1,71 @@
+name: Test custom git-source output (dry-run)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up local Flutter manifest for offline use
+        run: |
+          mkdir -p /tmp/flutter-storage/flutter_infra_release/releases
+          cp "$GITHUB_WORKSPACE/tests/fixtures/releases_linux.json" \
+            /tmp/flutter-storage/flutter_infra_release/releases/releases_linux.json
+
+      - id: action
+        uses: .
+        with:
+          channel: stable
+          git-source: "https://github.com/flutter/flutter.git"
+          dry-run: "true"
+        env:
+          FLUTTER_STORAGE_BASE_URL: "file:///tmp/flutter-storage"
+          RUNNER_OS: Linux
+          RUNNER_ARCH: X64
+          RUNNER_TEMP: /tmp
+          RUNNER_TOOL_CACHE: /opt/hostedtoolcache
+
+      - name: Assert CHANNEL output is stable
+        env:
+          CHANNEL: ${{ steps.action.outputs.CHANNEL }}
+        run: |
+          echo "CHANNEL: $CHANNEL"
+          if [ "$CHANNEL" != "stable" ]; then
+            echo "FAIL: expected CHANNEL=stable, got '$CHANNEL'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert VERSION output is non-empty
+        env:
+          VERSION: ${{ steps.action.outputs.VERSION }}
+        run: |
+          echo "VERSION: $VERSION"
+          if [ -z "$VERSION" ]; then
+            echo "FAIL: expected non-empty VERSION"
+            exit 1
+          fi
+          echo "PASS: VERSION=$VERSION"
+
+      - name: Assert CACHE-KEY output is non-empty
+        env:
+          CACHE_KEY: ${{ steps.action.outputs.CACHE-KEY }}
+        run: |
+          echo "CACHE-KEY: $CACHE_KEY"
+          if [ -z "$CACHE_KEY" ]; then
+            echo "FAIL: expected non-empty CACHE-KEY"
+            exit 1
+          fi
+          echo "PASS: CACHE-KEY=$CACHE_KEY"
+
+      - name: Assert ARCHITECTURE output is non-empty
+        env:
+          ARCH: ${{ steps.action.outputs.ARCHITECTURE }}
+        run: |
+          echo "ARCHITECTURE: $ARCH"
+          if [ -z "$ARCH" ]; then
+            echo "FAIL: expected non-empty ARCHITECTURE"
+            exit 1
+          fi
+          echo "PASS: ARCHITECTURE=$ARCH"

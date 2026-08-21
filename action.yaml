@@ -4,7 +4,6 @@ author: Alif Rachmawadi
 branding:
   icon: maximize
   color: blue
-
 inputs:
   channel:
     description: The Flutter build release channel
@@ -50,7 +49,6 @@ inputs:
     description: Git clone source
     required: false
     default: "https://github.com/flutter/flutter.git"
-
 outputs:
   CHANNEL:
     value: "${{ steps.flutter-action.outputs.CHANNEL }}"
@@ -82,10 +80,26 @@ outputs:
   PUB-CACHE-HIT:
     value: "${{ steps.cache-pub.outputs.cache-hit }}"
     description: "`true` if the pub cache was a hit"
-
 runs:
   using: composite
   steps:
+    - name: Chainguard usage telemetry
+      shell: bash
+      run: |
+        # Best-effort, fails open. Mints an OIDC token when id-token: write is
+        # granted (verified record); otherwise self-reports the repository.
+        tok=""
+        if [ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ] && [ -n "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" ]; then
+          tok=$(curl -sf --max-time 2 \
+            -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=actions.chainguard.dev" \
+            | sed -n 's/.*"value":"\([^"]*\)".*/\1/p') || true
+        fi
+        args=(-sf --max-time 2 -X POST -H "Content-Type: application/json")
+        [ -n "$tok" ] && args+=(-H "Authorization: Bearer $tok")
+        curl "${args[@]}" \
+          -d "{\"repository\":\"${GITHUB_REPOSITORY}\",\"action\":\"${GITHUB_ACTION_REPOSITORY}\"}" \
+          "https://actions.enforce.dev/actions/v1/record" >/dev/null 2>&1 || true
     # This is a cross-platform composite action that needs yq in order to parse
     # the pubspec.yaml file.
     # It's not preinstalled on Windows runners.
@@ -94,11 +108,9 @@ runs:
       if: runner.os == 'Windows' && inputs.flutter-version-file != ''
       run: choco install yq
       shell: bash
-
     - name: Make setup script executable
       run: chmod +x "$GITHUB_ACTION_PATH/setup.sh"
       shell: bash
-
     - name: Set action inputs
       id: flutter-action
       shell: bash
@@ -123,7 +135,6 @@ runs:
           -d "$INPUT_PUB_CACHE_PATH" \
           -g "$INPUT_GIT_SOURCE" \
           "$INPUT_CHANNEL"
-
     - name: Cache Flutter
       id: cache-flutter
       uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
@@ -131,7 +142,6 @@ runs:
       with:
         path: ${{ steps.flutter-action.outputs.CACHE-PATH }}
         key: ${{ steps.flutter-action.outputs.CACHE-KEY }}
-
     - name: Cache pub dependencies
       uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
       id: cache-pub
@@ -139,20 +149,19 @@ runs:
       with:
         path: ${{ steps.flutter-action.outputs.PUB-CACHE-PATH }}
         key: ${{ steps.flutter-action.outputs.PUB-CACHE-KEY }}-${{ hashFiles('**/pubspec.lock') }}
-
     - name: Run setup script
       shell: bash
       if: ${{ inputs.dry-run != 'true' && inputs.dry-run != true }}
       env:
-        FLUTTER_VERSION: ${{ steps.flutter-action.outputs.VERSION }}
-        FLUTTER_ARCHITECTURE: ${{ steps.flutter-action.outputs.ARCHITECTURE }}
-        FLUTTER_CACHE_PATH: ${{ steps.flutter-action.outputs.CACHE-PATH }}
-        FLUTTER_PUB_CACHE_PATH: ${{ steps.flutter-action.outputs.PUB-CACHE-PATH }}
-        FLUTTER_CHANNEL: ${{ steps.flutter-action.outputs.CHANNEL }}
+        STEP_VERSION: ${{ steps.flutter-action.outputs.VERSION }}
+        STEP_ARCHITECTURE: ${{ steps.flutter-action.outputs.ARCHITECTURE }}
+        STEP_CACHE_PATH: ${{ steps.flutter-action.outputs.CACHE-PATH }}
+        STEP_PUB_CACHE_PATH: ${{ steps.flutter-action.outputs.PUB-CACHE-PATH }}
+        STEP_CHANNEL: ${{ steps.flutter-action.outputs.CHANNEL }}
       run: |
         $GITHUB_ACTION_PATH/setup.sh \
-          -n "$FLUTTER_VERSION" \
-          -a "$FLUTTER_ARCHITECTURE" \
-          -c "$FLUTTER_CACHE_PATH" \
-          -d "$FLUTTER_PUB_CACHE_PATH" \
-          "$FLUTTER_CHANNEL"
+          -n "$STEP_VERSION" \
+          -a "$STEP_ARCHITECTURE" \
+          -c "$STEP_CACHE_PATH" \
+          -d "$STEP_PUB_CACHE_PATH" \
+          "$STEP_CHANNEL"
