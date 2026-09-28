@@ -236,12 +236,12 @@ if [ ! -x "$CACHE_PATH/flutter/bin/flutter" ]; then
 fi
 
 {
-	echo "FLUTTER_ROOT=$(printf '%s' "$CACHE_PATH/flutter" | tr -d '\n\r')"
-	echo "PUB_CACHE=$(printf '%s' "$PUB_CACHE" | tr -d '\n\r')"
+	printf 'FLUTTER_ROOT=%s\n' "$(printf '%s' "$CACHE_PATH/flutter" | tr -d '\n\r')"
+	printf 'PUB_CACHE=%s\n' "$(printf '%s' "$PUB_CACHE" | tr -d '\n\r')"
 } >>"${GITHUB_ENV:-/dev/null}"
 
 {
-	printf '%s' "$CACHE_PATH/flutter/bin" | tr -d '\n\r'; echo
-	printf '%s' "$CACHE_PATH/flutter/bin/cache/dart-sdk/bin" | tr -d '\n\r'; echo
-	printf '%s' "$PUB_CACHE/bin" | tr -d '\n\r'; echo
+	printf '%s\n' "$(printf '%s' "$CACHE_PATH/flutter/bin" | tr -d '\n\r')"
+	printf '%s\n' "$(printf '%s' "$CACHE_PATH/flutter/bin/cache/dart-sdk/bin" | tr -d '\n\r')"
+	printf '%s\n' "$(printf '%s' "$PUB_CACHE/bin" | tr -d '\n\r')"
 } >>"${GITHUB_PATH:-/dev/null}"

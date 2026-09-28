@@ -10,72 +10,37 @@
 
 **Harden Agent Version:** `2`
 
-Action **subosito--flutter-action/v2.23.0** was hardened automatically. 16 finding(s) were identified and resolved across 2 iteration(s).
+Action **subosito--flutter-action/v2.23.0** was hardened automatically. 12 finding(s) were identified and resolved across 1 iteration(s).
 
 ## Findings Fixed
 
 ### script-injection (severity: high)
 
-The 'Set action inputs' run block in action.yaml directly interpolates multiple ${{ inputs.* }} expressions into shell commands before the shell ever sees them. All inputs — flutter-version, flutter-version-file, architecture, cache-key, cache-path, pub-cache-key, pub-cache-path, git-source — are wrapped in single quotes, but YAML template substitution happens before the shell, so a value containing a single quote (') can break out of the quoting context and inject arbitrary shell commands. Most critically, ${{ inputs.channel }} is passed completely unquoted as a positional argument, allowing direct shell metacharacter injection. Fix: route all inputs through env: variables and double-quote every shell expansion.
+Sub-rule (a): Two `run:` blocks in action.yaml directly interpolate `${{ ... }}` expressions into shell command strings, enabling script injection. The 'Set action inputs' step interpolates nine user-controlled inputs directly into shell arguments: `${{ inputs.flutter-version }}`, `${{ inputs.flutter-version-file }}`, `${{ inputs.architecture }}`, `${{ inputs.cache-key }}`, `${{ inputs.cache-path }}`, `${{ inputs.pub-cache-key }}`, `${{ inputs.pub-cache-path }}`, `${{ inputs.git-source }}`, and (unquoted) `${{ inputs.channel }}`. The 'Run setup script' step interpolates `${{ steps.flutter-action.outputs.VERSION }}`, `${{ steps.flutter-action.outputs.ARCHITECTURE }}`, `${{ steps.flutter-action.outputs.CACHE-PATH }}`, `${{ steps.flutter-action.outputs.PUB-CACHE-PATH }}`, and (unquoted) `${{ steps.flutter-action.outputs.CHANNEL }}`. All of these are YAML-template-substituted before the shell sees them, allowing an attacker to inject arbitrary shell commands via crafted input values. The unquoted `${{ inputs.channel }}` and `${{ steps.flutter-action.outputs.CHANNEL }}` are especially dangerous as they are not even single-quoted.
 
 Locations:
 
-- `action.yaml:100`
+- `action.yaml:109`
+- `action.yaml:136`
 
-### script-injection (severity: high)
+### unpinned-uses (severity: high)
 
-The 'Run setup script' run block in action.yaml directly interpolates ${{ steps.flutter-action.outputs.CHANNEL }} unquoted into the shell command line. Even the single-quoted step outputs (VERSION, ARCHITECTURE, CACHE-PATH, PUB-CACHE-PATH) are subject to YAML template substitution before the shell sees them, allowing quote-breaking injection. Fix: route all step outputs through env: variables and double-quote every shell expansion.
+Two `uses:` references in action.yaml use the mutable tag `@v5` instead of a pinned 40-character commit SHA. This exposes the action to supply-chain attacks if the upstream action tag is moved or compromised. Affected references: `actions/cache@v5` (Cache Flutter step) and `actions/cache@v5` (Cache pub dependencies step). These should be pinned to a full SHA, e.g. `actions/cache@1bd1e32a3bdc45362d1e726936510720a7c6158d # v4`.
 
 Locations:
 
 - `action.yaml:121`
-
-### script-injection (severity: high)
-
-The 'Echo outputs' run block in .github/workflows/workflow.yaml directly interpolates ${{ runner.os }}, ${{ runner.arch }}, ${{ steps.flutter-action.outputs.CACHE-PATH }}, ${{ steps.flutter-action.outputs.CACHE-KEY }}, ${{ steps.flutter-action.outputs.CHANNEL }}, ${{ steps.flutter-action.outputs.VERSION }}, and ${{ steps.flutter-action.outputs.ARCHITECTURE }} directly into the shell command string. Any ${{ ... }} expression inside a run: block is a script-injection risk because YAML template substitution occurs before the shell parses the command. Fix: use env: variables and reference them as quoted $VAR inside the run: block.
-
-Locations:
-
-- `.github/workflows/workflow.yaml:44`
-- `.github/workflows/workflow.yaml:113`
+- `action.yaml:128`
 
 ### github-env-injection (severity: high)
 
-setup.sh writes user-controlled values to $GITHUB_ENV and $GITHUB_PATH without sanitization (no 'printf "%s" ... | tr -d "\n\r"' step). Specifically: (1) 'echo "FLUTTER_ROOT=$CACHE_PATH/flutter" >> $GITHUB_ENV' — $CACHE_PATH is derived from the inputs.cache-path input passed via -c flag; (2) 'echo "PUB_CACHE=$PUB_CACHE" >> $GITHUB_ENV' — $PUB_CACHE is derived from inputs.pub-cache-path; (3) three path entries written to $GITHUB_PATH are also derived from these same user-controlled values. A newline embedded in any of these values would allow an attacker to inject arbitrary environment variable assignments or path entries.
+In setup.sh, values derived from user-controlled inputs (passed as shell arguments from `${{ inputs.* }}` expressions in action.yaml) are written to `$GITHUB_OUTPUT`, `$GITHUB_ENV`, and `$GITHUB_PATH` without the required sanitization step (`printf '%s' ... | tr -d '\n\r'`). Specifically: (1) `CHANNEL`, `VERSION`, `ARCHITECTURE`, `CACHE-KEY`, `CACHE-PATH`, `PUB-CACHE-KEY`, and `PUB-CACHE-PATH` are echoed directly to `${GITHUB_OUTPUT}` — these values are derived from user-supplied `inputs.channel`, `inputs.flutter-version`, `inputs.architecture`, `inputs.cache-key`, `inputs.cache-path`, `inputs.pub-cache-key`, and `inputs.pub-cache-path`. (2) `FLUTTER_ROOT` and `PUB_CACHE` are echoed directly to `${GITHUB_ENV}`. (3) Flutter bin paths are echoed directly to `${GITHUB_PATH}`. An attacker can inject newlines into these values to set arbitrary environment variables or paths in the calling workflow.
 
 Locations:
 
-- `setup.sh:163`
-- `setup.sh:164`
-- `setup.sh:168`
-- `setup.sh:169`
-- `setup.sh:170`
-
-### unpinned-uses (severity: high)
-
-action.yaml references actions/cache@v5 (twice) using a mutable version tag instead of a pinned 40-character commit SHA. A tag can be moved to point to a different, potentially malicious commit. Fix: pin to a full SHA, e.g. actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v5.
-
-Locations:
-
-- `action.yaml:108`
-- `action.yaml:115`
-
-### unpinned-uses (severity: high)
-
-workflow.yaml references two actions with mutable refs: (1) actions/checkout@v6 — used in every job, pinned to a version tag rather than a commit SHA; (2) ludeeus/action-shellcheck@master — pinned to the 'master' branch, which is the most dangerous form of unpinned reference as it tracks the latest commit on that branch. Fix: pin both to full 40-character commit SHAs.
-
-Locations:
-
-- `.github/workflows/workflow.yaml:19`
-- `.github/workflows/workflow.yaml:21`
-
-### missing-permissions (severity: medium)
-
-workflow.yaml has no top-level 'permissions:' key and none of its jobs (lint_shellcheck, test_channel, test_cache, test_version_file, test_master_version, test_print_output_x64, test_print_output_arm64) define a job-level 'permissions:' block. Without explicit permissions, the workflow inherits the repository's default token permissions, which may be overly broad (write access to contents, pull-requests, etc.). Fix: add 'permissions: {}' or a minimal set of specific permissions at the top level.
-
-Locations:
-
-- `.github/workflows/workflow.yaml:1`
+- `setup.sh:214`
+- `setup.sh:228`
+- `setup.sh:234`
 
 ### static-inline-injection (severity: high)
 
@@ -153,33 +118,12 @@ Locations:
 
 ### Iteration 1
 
-**Fixes applied:** script-injection, github-env-injection, unpinned-uses, missing-permissions, static-inline-injection
+**Fixes applied:** script-injection, static-inline-injection, unpinned-uses, github-env-injection
 
 **Notes:**
 
-Fixed all findings across action.yaml, setup.sh, and .github/workflows/workflow.yaml:
-
-1. action.yaml - 'Set action inputs' step: Moved all 9 ${{ inputs.* }} expressions (flutter-version, flutter-version-file, architecture, cache-key, cache-path, pub-cache-key, pub-cache-path, git-source, channel) into an env: block. The channel input was previously completely unquoted; it's now double-quoted as "$INPUT_CHANNEL".
-
-2. action.yaml - 'Run setup script' step: Moved all 5 ${{ steps.flutter-action.outputs.* }} expressions (VERSION, ARCHITECTURE, CACHE-PATH, PUB-CACHE-PATH, CHANNEL) into an env: block with double-quoted shell references.
-
-3. action.yaml - Pinned both actions/cache@v5 references to full SHA caa296126883cff596d87d8935842f9db880ef25.
-
-4. setup.sh - Fixed github-env-injection: sanitized FLUTTER_ROOT, PUB_CACHE written to $GITHUB_ENV and the three path entries written to $GITHUB_PATH using 'printf "%s" "$VAR" | tr -d "\n\r"' to strip embedded newlines.
-
-5. workflow.yaml - Added 'permissions: {}' at top level.
-
-6. workflow.yaml - Pinned actions/checkout@v6 to d23441a48e516b6c34aea4fa41551a30e30af803 in all 7 jobs (lint_shellcheck, test_channel, test_cache, test_version_file, test_master_version, test_print_output_x64, test_print_output_arm64).
-
-7. workflow.yaml - Pinned ludeeus/action-shellcheck@master to 00b27aa7cb85167568cb48a3838b75f4265f2bca.
-
-8. workflow.yaml - Fixed 'Echo outputs' steps in test_channel and test_master_version jobs by moving all ${{ runner.* }} and ${{ steps.flutter-action.outputs.* }} expressions into env: blocks.
-
-### Iteration 2
-
-**Fixes applied:** github-env-injection
-
-**Notes:**
-
-Fixed the PRINT_ONLY block in setup.sh that writes to $GITHUB_OUTPUT. Replaced all 7 plain `echo "KEY=$value"` statements with `printf 'KEY=%s\n' "$(printf '%s' "$value" | tr -d '\n\r')"` to sanitize newlines from user-controlled values (info_channel, info_version, info_architecture, CACHE_KEY, CACHE_PATH, PUB_CACHE_KEY, PUB_CACHE) before writing them to $GITHUB_OUTPUT. The $GITHUB_ENV and $GITHUB_PATH writes at the end of the file were already correctly sanitized and were left unchanged.
+Fixed all findings in action.yaml and setup.sh:
+1. script-injection / static-inline-injection (action.yaml lines 109, 136 / action.yml lines 111-119): Moved all nine ${{ inputs.* }} expressions in 'Set action inputs' step and all five ${{ steps.flutter-action.outputs.* }} expressions in 'Run setup script' step into env: blocks. Shell script now references them as plain env vars ($INPUT_FLUTTER_VERSION, $INPUT_CHANNEL, $STEP_VERSION, $STEP_CHANNEL, etc.).
+2. unpinned-uses (action.yaml lines 121, 128): Pinned both `actions/cache@v5` references to full SHA `actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5`.
+3. github-env-injection (setup.sh lines 214, 228, 234): Replaced all `echo "KEY=$VALUE"` writes to $GITHUB_OUTPUT, $GITHUB_ENV, and $GITHUB_PATH with `printf '%s' "$VALUE" | tr -d '\n\r'` sanitized forms to prevent newline injection.
 
