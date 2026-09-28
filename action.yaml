@@ -137,13 +137,13 @@ runs:
           "$INPUT_CHANNEL"
     - name: Cache Flutter
       id: cache-flutter
-      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+      uses: chainguard-actions/actions-cache@1a492a110f951652a0d2d3327bc20ee36867788e # v4
       if: ${{ inputs.cache == 'true' }}
       with:
         path: ${{ steps.flutter-action.outputs.CACHE-PATH }}
         key: ${{ steps.flutter-action.outputs.CACHE-KEY }}
     - name: Cache pub dependencies
-      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+      uses: chainguard-actions/actions-cache@1a492a110f951652a0d2d3327bc20ee36867788e # v4
       id: cache-pub
       if: ${{ inputs.cache == 'true' }}
       with:
@@ -153,15 +153,15 @@ runs:
       shell: bash
       if: ${{ inputs.dry-run != 'true' && inputs.dry-run != true }}
       env:
-        STEP_VERSION: ${{ steps.flutter-action.outputs.VERSION }}
-        STEP_ARCHITECTURE: ${{ steps.flutter-action.outputs.ARCHITECTURE }}
-        STEP_CACHE_PATH: ${{ steps.flutter-action.outputs.CACHE-PATH }}
-        STEP_PUB_CACHE_PATH: ${{ steps.flutter-action.outputs.PUB-CACHE-PATH }}
-        STEP_CHANNEL: ${{ steps.flutter-action.outputs.CHANNEL }}
+        FLUTTER_ACTION_VERSION: ${{ steps.flutter-action.outputs.VERSION }}
+        FLUTTER_ACTION_ARCHITECTURE: ${{ steps.flutter-action.outputs.ARCHITECTURE }}
+        FLUTTER_ACTION_CACHE_PATH: ${{ steps.flutter-action.outputs.CACHE-PATH }}
+        FLUTTER_ACTION_PUB_CACHE_PATH: ${{ steps.flutter-action.outputs.PUB-CACHE-PATH }}
+        FLUTTER_ACTION_CHANNEL: ${{ steps.flutter-action.outputs.CHANNEL }}
       run: |
         $GITHUB_ACTION_PATH/setup.sh \
-          -n "$STEP_VERSION" \
-          -a "$STEP_ARCHITECTURE" \
-          -c "$STEP_CACHE_PATH" \
-          -d "$STEP_PUB_CACHE_PATH" \
-          "$STEP_CHANNEL"
+          -n "$FLUTTER_ACTION_VERSION" \
+          -a "$FLUTTER_ACTION_ARCHITECTURE" \
+          -c "$FLUTTER_ACTION_CACHE_PATH" \
+          -d "$FLUTTER_ACTION_PUB_CACHE_PATH" \
+          "$FLUTTER_ACTION_CHANNEL"

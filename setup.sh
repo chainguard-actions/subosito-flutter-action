@@ -235,16 +235,17 @@ if [ ! -x "$CACHE_PATH/bin/flutter" ]; then
 	fi
 fi
 
-safe_cache_path_env=$(printf '%s' "$CACHE_PATH" | tr -d '\n\r')
-safe_pub_cache_env=$(printf '%s' "$PUB_CACHE" | tr -d '\n\r')
-
 {
-	echo "FLUTTER_ROOT=$safe_cache_path_env"
-	echo "PUB_CACHE=$safe_pub_cache_env"
+	safe_cache_path=$(printf '%s' "$CACHE_PATH" | tr -d '\n\r')
+	safe_pub_cache=$(printf '%s' "$PUB_CACHE" | tr -d '\n\r')
+	echo "FLUTTER_ROOT=$safe_cache_path"
+	echo "PUB_CACHE=$safe_pub_cache"
 } >>"${GITHUB_ENV:-/dev/null}"
 
 {
-	echo "$safe_cache_path_env/bin"
-	echo "$safe_cache_path_env/bin/cache/dart-sdk/bin"
-	echo "$safe_pub_cache_env/bin"
+	safe_cache_path=$(printf '%s' "$CACHE_PATH" | tr -d '\n\r')
+	safe_pub_cache=$(printf '%s' "$PUB_CACHE" | tr -d '\n\r')
+	echo "$safe_cache_path/bin"
+	echo "$safe_cache_path/bin/cache/dart-sdk/bin"
+	echo "$safe_pub_cache/bin"
 } >>"${GITHUB_PATH:-/dev/null}"
