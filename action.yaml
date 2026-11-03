@@ -4,6 +4,7 @@ author: Alif Rachmawadi
 branding:
   icon: maximize
   color: blue
+
 inputs:
   channel:
     description: The Flutter build release channel
@@ -53,6 +54,7 @@ inputs:
     description: Git clone source
     required: false
     default: "https://github.com/flutter/flutter.git"
+
 outputs:
   CHANNEL:
     value: "${{ steps.flutter-action.outputs.CHANNEL }}"
@@ -84,6 +86,7 @@ outputs:
   PUB-CACHE-HIT:
     value: "${{ steps.cache-pub.outputs.cache-hit }}"
     description: "`true` if the pub cache was a hit"
+
 runs:
   using: composite
   steps:
@@ -112,9 +115,11 @@ runs:
       if: runner.os == 'Windows' && inputs.flutter-version-file != '' && !endsWith(inputs.flutter-version-file, '.fvmrc') && !endsWith(inputs.flutter-version-file, 'fvm_config.json')
       run: choco install yq
       shell: bash
+
     - name: Make setup script executable
       run: chmod +x "$GITHUB_ACTION_PATH/setup.sh"
       shell: bash
+
     - name: Set action inputs
       id: flutter-action
       shell: bash
@@ -129,7 +134,7 @@ runs:
         INPUT_GIT_SOURCE: ${{ inputs.git-source }}
         INPUT_CHANNEL: ${{ inputs.channel }}
       run: |
-        $GITHUB_ACTION_PATH/setup.sh -p \
+        "$GITHUB_ACTION_PATH/setup.sh" -p \
           -n "$INPUT_FLUTTER_VERSION" \
           -f "$INPUT_FLUTTER_VERSION_FILE" \
           -a "$INPUT_ARCHITECTURE" \
@@ -138,7 +143,8 @@ runs:
           -l "$INPUT_PUB_CACHE_KEY" \
           -d "$INPUT_PUB_CACHE_PATH" \
           -g "$INPUT_GIT_SOURCE" \
-          "$INPUT_CHANNEL"
+          ${INPUT_CHANNEL:+"$INPUT_CHANNEL"}
+
     - name: Cache Flutter
       id: cache-flutter
       uses: chainguard-actions/actions-cache@dc4b8a9beaba8dd7fead89b3b3df02fb4bc6336a # v5
@@ -146,6 +152,7 @@ runs:
       with:
         path: ${{ steps.flutter-action.outputs.CACHE-PATH }}
         key: ${{ steps.flutter-action.outputs.CACHE-KEY }}
+
     - name: Cache pub dependencies
       uses: chainguard-actions/actions-cache@dc4b8a9beaba8dd7fead89b3b3df02fb4bc6336a # v5
       id: cache-pub
@@ -153,6 +160,7 @@ runs:
       with:
         path: ${{ steps.flutter-action.outputs.PUB-CACHE-PATH }}
         key: ${{ steps.flutter-action.outputs.PUB-CACHE-KEY }}-${{ hashFiles('**/pubspec.lock') }}
+
     - name: Run setup script
       shell: bash
       if: ${{ inputs.dry-run != 'true' && inputs.dry-run != true }}
@@ -163,9 +171,9 @@ runs:
         STEP_PUB_CACHE_PATH: ${{ steps.flutter-action.outputs.PUB-CACHE-PATH }}
         STEP_CHANNEL: ${{ steps.flutter-action.outputs.CHANNEL }}
       run: |
-        $GITHUB_ACTION_PATH/setup.sh \
+        "$GITHUB_ACTION_PATH/setup.sh" \
           -n "$STEP_VERSION" \
           -a "$STEP_ARCHITECTURE" \
           -c "$STEP_CACHE_PATH" \
           -d "$STEP_PUB_CACHE_PATH" \
-          "$STEP_CHANNEL"
+          ${STEP_CHANNEL:+"$STEP_CHANNEL"}
