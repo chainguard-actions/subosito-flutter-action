@@ -4,6 +4,7 @@ author: Alif Rachmawadi
 branding:
   icon: maximize
   color: blue
+
 inputs:
   channel:
     description: The Flutter build release channel
@@ -49,6 +50,7 @@ inputs:
     description: Git clone source
     required: false
     default: "https://github.com/flutter/flutter.git"
+
 outputs:
   CHANNEL:
     value: "${{ steps.flutter-action.outputs.CHANNEL }}"
@@ -80,6 +82,7 @@ outputs:
   PUB-CACHE-HIT:
     value: "${{ steps.cache-pub.outputs.cache-hit }}"
     description: "`true` if the pub cache was a hit"
+
 runs:
   using: composite
   steps:
@@ -108,9 +111,11 @@ runs:
       if: runner.os == 'Windows' && inputs.flutter-version-file != ''
       run: choco install yq
       shell: bash
+
     - name: Make setup script executable
       run: chmod +x "$GITHUB_ACTION_PATH/setup.sh"
       shell: bash
+
     - name: Set action inputs
       id: flutter-action
       shell: bash
@@ -134,7 +139,8 @@ runs:
           -l "$INPUT_PUB_CACHE_KEY" \
           -d "$INPUT_PUB_CACHE_PATH" \
           -g "$INPUT_GIT_SOURCE" \
-          "$INPUT_CHANNEL"
+          ${INPUT_CHANNEL:+"$INPUT_CHANNEL"}
+
     - name: Cache Flutter
       id: cache-flutter
       uses: chainguard-actions/actions-cache@dc4b8a9beaba8dd7fead89b3b3df02fb4bc6336a # v5
@@ -142,6 +148,7 @@ runs:
       with:
         path: ${{ steps.flutter-action.outputs.CACHE-PATH }}
         key: ${{ steps.flutter-action.outputs.CACHE-KEY }}
+
     - name: Cache pub dependencies
       uses: chainguard-actions/actions-cache@dc4b8a9beaba8dd7fead89b3b3df02fb4bc6336a # v5
       id: cache-pub
@@ -149,19 +156,20 @@ runs:
       with:
         path: ${{ steps.flutter-action.outputs.PUB-CACHE-PATH }}
         key: ${{ steps.flutter-action.outputs.PUB-CACHE-KEY }}-${{ hashFiles('**/pubspec.lock') }}
+
     - name: Run setup script
       shell: bash
       if: ${{ inputs.dry-run != 'true' && inputs.dry-run != true }}
       env:
-        FLUTTER_ACTION_VERSION: ${{ steps.flutter-action.outputs.VERSION }}
-        FLUTTER_ACTION_ARCHITECTURE: ${{ steps.flutter-action.outputs.ARCHITECTURE }}
-        FLUTTER_ACTION_CACHE_PATH: ${{ steps.flutter-action.outputs.CACHE-PATH }}
-        FLUTTER_ACTION_PUB_CACHE_PATH: ${{ steps.flutter-action.outputs.PUB-CACHE-PATH }}
-        FLUTTER_ACTION_CHANNEL: ${{ steps.flutter-action.outputs.CHANNEL }}
+        FLUTTER_VERSION: ${{ steps.flutter-action.outputs.VERSION }}
+        FLUTTER_ARCHITECTURE: ${{ steps.flutter-action.outputs.ARCHITECTURE }}
+        FLUTTER_CACHE_PATH: ${{ steps.flutter-action.outputs.CACHE-PATH }}
+        FLUTTER_PUB_CACHE_PATH: ${{ steps.flutter-action.outputs.PUB-CACHE-PATH }}
+        FLUTTER_CHANNEL: ${{ steps.flutter-action.outputs.CHANNEL }}
       run: |
         "$GITHUB_ACTION_PATH/setup.sh" \
-          -n "$FLUTTER_ACTION_VERSION" \
-          -a "$FLUTTER_ACTION_ARCHITECTURE" \
-          -c "$FLUTTER_ACTION_CACHE_PATH" \
-          -d "$FLUTTER_ACTION_PUB_CACHE_PATH" \
-          "$FLUTTER_ACTION_CHANNEL"
+          -n "$FLUTTER_VERSION" \
+          -a "$FLUTTER_ARCHITECTURE" \
+          -c "$FLUTTER_CACHE_PATH" \
+          -d "$FLUTTER_PUB_CACHE_PATH" \
+          ${FLUTTER_CHANNEL:+"$FLUTTER_CHANNEL"}

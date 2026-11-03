@@ -232,13 +232,16 @@ if [ ! -x "$CACHE_PATH/bin/flutter" ]; then
 	fi
 fi
 
+SAFE_CACHE_PATH="$(sanitize_value "$CACHE_PATH")"
+SAFE_PUB_CACHE="$(sanitize_value "$PUB_CACHE")"
+
 {
-	printf 'FLUTTER_ROOT=%s\n' "$(sanitize_value "$CACHE_PATH")"
-	printf 'PUB_CACHE=%s\n' "$(sanitize_value "$PUB_CACHE")"
+	printf 'FLUTTER_ROOT=%s\n' "$SAFE_CACHE_PATH"
+	printf 'PUB_CACHE=%s\n' "$SAFE_PUB_CACHE"
 } >>"${GITHUB_ENV:-/dev/null}"
 
 {
-	printf '%s\n' "$(sanitize_value "$CACHE_PATH")/bin"
-	printf '%s\n' "$(sanitize_value "$CACHE_PATH")/bin/cache/dart-sdk/bin"
-	printf '%s\n' "$(sanitize_value "$PUB_CACHE")/bin"
+	printf '%s\n' "$SAFE_CACHE_PATH/bin"
+	printf '%s\n' "$SAFE_CACHE_PATH/bin/cache/dart-sdk/bin"
+	printf '%s\n' "$SAFE_PUB_CACHE/bin"
 } >>"${GITHUB_PATH:-/dev/null}"
